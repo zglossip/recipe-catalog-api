@@ -56,6 +56,8 @@ if (app.Environment.IsDevelopment())
 // TODO: Look more into this later
 // app.UseHttpsRedirection();
 
+app.UseStaticFiles();
+
 app.UseCors("FrontendCorsPolicy");
 
 app.UseAuthorization();
