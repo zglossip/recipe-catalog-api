@@ -2,10 +2,75 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recipe Catalog</title>
 </head>
 <body>
+    <h1>Add Recipe</h1>
+    <form id="form">
+        <p><label>Name <input id="name"></label></p>
+        <p><label>Serving amount <input id="servingAmount" type="number" step="any" value="1"></label></p>
+        <p><label>Serving name <input id="servingName" value="serving"></label></p>
+        <p><label>Source <input id="source"></label></p>
+        <p><label>Courses (comma-separated) <input id="courseTypes"></label></p>
+        <p><label>Cuisines (comma-separated) <input id="cuisineTypes"></label></p>
+        <p><label>Tags (comma-separated) <input id="tags"></label></p>
+        <p>Ingredients (one per line: name | qty | uom | notes)<br>
+            <textarea id="ingredients" rows="8" cols="60"></textarea></p>
+        <p>Instructions (one per line)<br>
+            <textarea id="instructions" rows="8" cols="60"></textarea></p>
+        <p><button type="submit">Save</button></p>
+    </form>
+    <p id="status"></p>
 
+    <script>
+        function list(v) {
+            return v.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+        }
+        function lines(v) {
+            return v.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        }
+        function ingredients(v) {
+            return lines(v).map(function (line) {
+                var p = line.split('|').map(function (s) { return s.trim(); });
+                return {
+                    name: p[0],
+                    quantity: p[1] ? parseFloat(p[1]) : 0,
+                    uom: p[2] || null,
+                    notes: p[3] || null
+                };
+            });
+        }
+        function val(id) { return document.getElementById(id).value.trim(); }
+
+        document.getElementById('form').onsubmit = function (e) {
+            e.preventDefault();
+            var body = {
+                name: val('name'),
+                servingAmount: parseFloat(val('servingAmount')) || 0,
+                servingName: val('servingName'),
+                source: val('source') || null,
+                courseTypes: list(val('courseTypes')),
+                cuisineTypes: list(val('cuisineTypes')),
+                tags: list(val('tags')),
+                ingredients: ingredients(val('ingredients')),
+                instructions: lines(val('instructions'))
+            };
+            document.getElementById('status').textContent = 'Saving...';
+            fetch('/recipe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            }).then(function (res) {
+                if (!res.ok) { throw new Error(res.status); }
+                return res.json();
+            }).then(function (data) {
+                document.getElementById('status').textContent = 'Saved recipe #' + data.id;
+                document.getElementById('form').reset();
+                document.getElementById('name').focus();
+            }).catch(function (err) {
+                document.getElementById('status').textContent = 'Error: ' + err.message;
+            });
+        };
+    </script>
 </body>
 </html>
