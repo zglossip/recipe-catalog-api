@@ -1,7 +1,7 @@
 CREATE TABLE recipe_catalog.course
 (
     recipe_id smallint NOT NULL,
-    text character varying(10) NOT NULL,
+    text character varying(50) NOT NULL,
     PRIMARY KEY (recipe_id, text),
     CONSTRAINT "recipe_FK" FOREIGN KEY (recipe_id)
         REFERENCES recipe_catalog.recipe (id) MATCH SIMPLE
