@@ -35,6 +35,19 @@ public class RecipeService(IRecipeDao recipeDao, ICourseDao courseDao, ICuisineD
         {
             return null;
         }
+        Recipe newRecipe = await _populateRecipeDetailsAsync(recipe);
+
+        List<Recipe> subRecipes = await _recipeDao.GetByParentAsync(recipe.Id);
+        foreach (Recipe subRecipe in subRecipes)
+        {
+            newRecipe.SubRecipes.Add(await _populateRecipeDetailsAsync(subRecipe));
+        }
+
+        return newRecipe;
+    }
+
+    private async Task<Recipe> _populateRecipeDetailsAsync(Recipe recipe)
+    {
         Recipe newRecipe = recipe.Clone();
         newRecipe.CourseTypes = await _courseDao.GetAsync(recipe.Id);
         newRecipe.CuisineTypes = await _cuisineDao.GetAsync(recipe.Id);
@@ -42,16 +55,7 @@ public class RecipeService(IRecipeDao recipeDao, ICourseDao courseDao, ICuisineD
         return newRecipe;
     }
 
-    public Task<int> CreateFullAsync(FullRecipeRequest recipe) => _recipeDao.CreateFullAsync(recipe);
-
-    public async Task<int> CreateAsync(RecipeRequest recipe)
-    {
-        int id = await _recipeDao.CreateAsync(recipe);
-        await _courseDao.CreateAsync(recipe.CourseTypes, id);
-        await _cuisineDao.CreateAsync(recipe.CuisineTypes, id);
-        await _tagDao.CreateAsync(recipe.Tags, id);
-        return id;
-    }
+    public Task<int> CreateFullAsync(RecipeWithSubRecipesRequest recipe) => _recipeDao.CreateFullAsync(recipe);
 
     public async Task UpdateAsync(int id, RecipeRequest recipe)
     {

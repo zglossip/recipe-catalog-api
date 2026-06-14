@@ -9,4 +9,6 @@ public class FullRecipeRequest : RecipeRequest
 
     [Required]
     public List<string> Instructions { get; set; } = [];
+
+    public int? ParentId { get; set; }
 }

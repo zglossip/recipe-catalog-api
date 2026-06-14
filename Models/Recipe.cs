@@ -20,7 +20,11 @@ public class Recipe
 
     public DateTime? Uploaded { get; set; }
 
-    public Recipe(int Id, string Name, int ServingAmount, string ServingName, string? Source, DateTime? Uploaded)
+    public int? ParentId { get; set; }
+
+    public List<Recipe> SubRecipes { get; set; }
+
+    public Recipe(int Id, string Name, int ServingAmount, string ServingName, string? Source, DateTime? Uploaded, int? ParentId)
     {
         this.Id = Id;
         this.Name = Name;
@@ -31,15 +35,18 @@ public class Recipe
         this.ServingName = ServingName;
         this.Source = Source;
         this.Uploaded = Uploaded;
+        this.ParentId = ParentId;
+        this.SubRecipes = [];
     }
 
     public Recipe Clone()
     {
-        return new Recipe(this.Id, this.Name, this.ServingAmount, this.ServingName, this.Source, this.Uploaded)
+        return new Recipe(this.Id, this.Name, this.ServingAmount, this.ServingName, this.Source, this.Uploaded, this.ParentId)
         {
             CourseTypes = [.. this.CourseTypes],
             CuisineTypes = [.. this.CuisineTypes],
-            Tags = [.. this.Tags]
+            Tags = [.. this.Tags],
+            SubRecipes = [.. this.SubRecipes]
         };
     }
 }

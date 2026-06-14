@@ -47,7 +47,7 @@ public class RecipeController(IIngredientService ingredientService, IInstruction
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateFull(FullRecipeRequest recipe)
+    public async Task<IActionResult> CreateFull(RecipeWithSubRecipesRequest recipe)
     {
         int id = await _recipeService.CreateFullAsync(recipe);
         return StatusCode(201, new { id });
