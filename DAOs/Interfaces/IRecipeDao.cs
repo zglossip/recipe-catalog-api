@@ -7,7 +7,7 @@ public interface IRecipeDao
 {
     public Task<Recipe?> GetAsync(int id);
 
-    public Task<List<Recipe>> GetByParentAsync(int parentId);
+    public Task<List<Recipe>> GetByParentsAsync(List<int> parentIds);
 
     public Task<List<Recipe>> GetAsync(List<string> courses, List<string> cuisines, List<string> tags, RecipeColumn? sortColumn, bool? reverse, string? name);
 

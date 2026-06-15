@@ -14,45 +14,68 @@ public class RecipeService(IRecipeDao recipeDao, ICourseDao courseDao, ICuisineD
 
     public async Task<Recipe?> GetAsync(int id)
     {
-        return await _getPopulatedRecipeAsync(await _recipeDao.GetAsync(id));
+        Recipe? recipe = await _recipeDao.GetAsync(id);
+        if (recipe == null)
+        {
+            return null;
+        }
+        return (await _populateAsync(new List<Recipe> { recipe }))[0];
     }
 
     public async Task<List<Recipe>> GetAsync(List<string> courses, List<string> cuisines, List<string> tags, RecipeColumn? sortColumn, bool? reverse, string? name)
     {
         List<Recipe> recipes = await _recipeDao.GetAsync(courses, cuisines, tags, sortColumn, reverse, name);
-        List<Recipe> result = new List<Recipe>(recipes.Count);
-        foreach (Recipe recipe in recipes)
+        return await _populateAsync(recipes);
+    }
+
+    private async Task<List<Recipe>> _populateAsync(List<Recipe> topLevelRecipes)
+    {
+        if (topLevelRecipes.Count == 0)
         {
-            Recipe? newRecipe = await _getPopulatedRecipeAsync(recipe);
-            if (newRecipe != null) result.Add(newRecipe);
+            return new List<Recipe>();
+        }
+
+        List<int> topLevelIds = topLevelRecipes.Select(recipe => recipe.Id).ToList();
+        List<Recipe> children = await _recipeDao.GetByParentsAsync(topLevelIds);
+
+        List<int> allIds = topLevelIds.Concat(children.Select(child => child.Id)).ToList();
+        Dictionary<int, List<string>> coursesById = await _courseDao.GetByRecipeIdsAsync(allIds);
+        Dictionary<int, List<string>> cuisinesById = await _cuisineDao.GetByRecipeIdsAsync(allIds);
+        Dictionary<int, List<string>> tagsById = await _tagDao.GetByRecipeIdsAsync(allIds);
+
+        Dictionary<int, List<Recipe>> childrenByParent = new Dictionary<int, List<Recipe>>();
+        foreach (Recipe child in children)
+        {
+            Recipe populatedChild = _withDetails(child, coursesById, cuisinesById, tagsById);
+            int parentId = child.ParentId!.Value;
+            if (!childrenByParent.TryGetValue(parentId, out List<Recipe>? siblings))
+            {
+                siblings = new List<Recipe>();
+                childrenByParent[parentId] = siblings;
+            }
+            siblings.Add(populatedChild);
+        }
+
+        List<Recipe> result = new List<Recipe>(topLevelRecipes.Count);
+        foreach (Recipe recipe in topLevelRecipes)
+        {
+            Recipe populated = _withDetails(recipe, coursesById, cuisinesById, tagsById);
+            if (childrenByParent.TryGetValue(recipe.Id, out List<Recipe>? subRecipes))
+            {
+                populated.SubRecipes = subRecipes;
+            }
+            result.Add(populated);
         }
         return result;
     }
 
-    private async Task<Recipe?> _getPopulatedRecipeAsync(Recipe? recipe)
+    private static Recipe _withDetails(Recipe recipe, Dictionary<int, List<string>> coursesById, Dictionary<int, List<string>> cuisinesById, Dictionary<int, List<string>> tagsById)
     {
-        if (recipe == null)
-        {
-            return null;
-        }
-        Recipe newRecipe = await _populateRecipeDetailsAsync(recipe);
-
-        List<Recipe> subRecipes = await _recipeDao.GetByParentAsync(recipe.Id);
-        foreach (Recipe subRecipe in subRecipes)
-        {
-            newRecipe.SubRecipes.Add(await _populateRecipeDetailsAsync(subRecipe));
-        }
-
-        return newRecipe;
-    }
-
-    private async Task<Recipe> _populateRecipeDetailsAsync(Recipe recipe)
-    {
-        Recipe newRecipe = recipe.Clone();
-        newRecipe.CourseTypes = await _courseDao.GetAsync(recipe.Id);
-        newRecipe.CuisineTypes = await _cuisineDao.GetAsync(recipe.Id);
-        newRecipe.Tags = await _tagDao.GetAsync(recipe.Id);
-        return newRecipe;
+        Recipe populated = recipe.Clone();
+        populated.CourseTypes = coursesById.GetValueOrDefault(recipe.Id) ?? new List<string>();
+        populated.CuisineTypes = cuisinesById.GetValueOrDefault(recipe.Id) ?? new List<string>();
+        populated.Tags = tagsById.GetValueOrDefault(recipe.Id) ?? new List<string>();
+        return populated;
     }
 
     public Task<int> CreateFullAsync(RecipeWithSubRecipesRequest recipe) => _recipeDao.CreateFullAsync(recipe);

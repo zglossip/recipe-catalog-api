@@ -22,13 +22,22 @@ public class RecipeDao(IDatabaseConnectionSupplier databaseConnectionSupplier) :
         return DaoUtil.QueryAsync(_databaseConnectionSupplier.GetConnectionString(), sql, new RecipeMapper(), new List<NpgsqlParameter>() { new NpgsqlParameter("@recipeId", id) });
     }
 
-    public Task<List<Recipe>> GetByParentAsync(int parentId)
+    public Task<List<Recipe>> GetByParentsAsync(List<int> parentIds)
     {
+        if (parentIds.Count == 0)
+        {
+            return Task.FromResult(new List<Recipe>());
+        }
+
+        QueryParamList<int> parentIdParamList = new QueryParamList<int>("parentId", parentIds);
         string sql = " SELECT id, name, serving_amount, serving_name, source, uploaded, parent_id" +
                      " FROM recipe_catalog.recipe" +
-                     " WHERE parent_id = @parentId";
+                     " WHERE parent_id IN (" + parentIdParamList.GetQueryString() + ")";
 
-        return DaoUtil.QueryForListAsync(_databaseConnectionSupplier.GetConnectionString(), sql, new RecipeMapper(), new List<NpgsqlParameter>() { new NpgsqlParameter("@parentId", parentId) });
+        List<NpgsqlParameter> parameters = new List<NpgsqlParameter>();
+        parentIdParamList.PopulateParamList(parameters);
+
+        return DaoUtil.QueryForListAsync(_databaseConnectionSupplier.GetConnectionString(), sql, new RecipeMapper(), parameters);
     }
 
     public Task<List<Recipe>> GetAsync(List<string> courses, List<string> cuisines, List<string> tags, RecipeColumn? sortColumn, bool? reverse, string? name)

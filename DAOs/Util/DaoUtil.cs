@@ -38,6 +38,34 @@ public class DaoUtil
         return list;
     }
 
+    public static async Task<Dictionary<int, List<string>>> QueryForLookupAsync(string connectionString, string sql, string keyColumn, string valueColumn, List<NpgsqlParameter>? parameters = null)
+    {
+        Dictionary<int, List<string>> lookup = new Dictionary<int, List<string>>();
+
+        await using NpgsqlConnection connection = new NpgsqlConnection(connectionString);
+        await using NpgsqlCommand command = new NpgsqlCommand(sql, connection);
+
+        parameters?.ForEach(p => command.Parameters.Add(p));
+
+        await connection.OpenAsync();
+
+        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            int key = reader.GetInt32(reader.GetOrdinal(keyColumn));
+            string value = reader.GetString(reader.GetOrdinal(valueColumn));
+
+            if (!lookup.TryGetValue(key, out List<string>? values))
+            {
+                values = new List<string>();
+                lookup[key] = values;
+            }
+            values.Add(value);
+        }
+
+        return lookup;
+    }
+
     public static async Task ExecuteAsync(string connectionString, string sql, List<NpgsqlParameter>? parameters = null)
     {
         await using NpgsqlConnection connection = new NpgsqlConnection(connectionString);

@@ -36,12 +36,21 @@ public class CuisineDao(IDatabaseConnectionSupplier databaseConnectionSupplier) 
         return DaoUtil.ExecuteAsync(_databaseConnectionSupplier.GetConnectionString(), sql, new List<NpgsqlParameter>() { new NpgsqlParameter("@recipeId", recipeId) });
     }
 
-    public Task<List<string>> GetAsync(int recipeId)
+    public Task<Dictionary<int, List<string>>> GetByRecipeIdsAsync(List<int> recipeIds)
     {
-        string sql = " SELECT text" +
-                     " FROM recipe_catalog.cuisine" +
-                     " WHERE recipe_id = @recipeId";
+        if (recipeIds.Count == 0)
+        {
+            return Task.FromResult(new Dictionary<int, List<string>>());
+        }
 
-        return DaoUtil.QueryForListAsync(_databaseConnectionSupplier.GetConnectionString(), sql, new CuisineMapper(), new List<NpgsqlParameter>() { new NpgsqlParameter("@recipeId", recipeId) });
+        QueryParamList<int> recipeIdParamList = new QueryParamList<int>("recipeId", recipeIds);
+        string sql = " SELECT recipe_id, text" +
+                     " FROM recipe_catalog.cuisine" +
+                     " WHERE recipe_id IN (" + recipeIdParamList.GetQueryString() + ")";
+
+        List<NpgsqlParameter> parameters = new List<NpgsqlParameter>();
+        recipeIdParamList.PopulateParamList(parameters);
+
+        return DaoUtil.QueryForLookupAsync(_databaseConnectionSupplier.GetConnectionString(), sql, "recipe_id", "text", parameters);
     }
 }
